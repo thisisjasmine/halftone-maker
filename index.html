@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f0e6" />
+    <meta
+      name="description"
+      content="上传一张照片，在浏览器里印成网点。Turn a photo into a halftone in your browser."
+    />
+    <title>网点素材生成器 · Halftone Maker</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./css/app.css?v=16" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="mast">
+        <h1>网点素材生成器 <i class="en" lang="en">Halftone Maker</i></h1>
+      </header>
+
+      <section class="stage" id="stage">
+        <div class="stage-bar">
+          <button type="button" class="text-btn" id="pick"><span class="bi">上传照片 <i class="en" lang="en">Upload</i></span></button>
+          <button type="button" class="text-btn" id="compare"><span class="bi">按住对比原图 <i class="en" lang="en">Hold to compare</i></span></button>
+          <p class="status" id="status" role="status"></p>
+        </div>
+        <div class="canvas-slot">
+          <button type="button" class="empty" id="empty" lang="en">Upload an image first</button>
+          <div class="frame" id="frame" hidden>
+            <canvas id="view" role="img" aria-label="网点预览 Halftone preview"></canvas>
+            <img id="original" alt="原图 Original" hidden />
+          </div>
+        </div>
+        <input id="file" type="file" accept="image/*" hidden />
+      </section>
+
+      <aside class="panel" id="panel">
+        <div class="presets" id="presets">
+          <button type="button" data-preset="reference" aria-pressed="true" class="is-on"><span class="bi">基础 <i class="en" lang="en">Basic</i></span></button>
+          <button type="button" data-preset="fine" aria-pressed="false"><span class="bi">细腻 <i class="en" lang="en">Fine</i></span></button>
+          <button type="button" data-preset="poster" aria-pressed="false"><span class="bi">海报 <i class="en" lang="en">Poster</i></span></button>
+        </div>
+
+        <p class="group-label"><span class="bi">网点效果设置 <i class="en" lang="en">Halftone settings</i></span></p>
+        <label class="slider">
+          <span><span class="bi">网点大小 <i class="en" lang="en">Dot size</i></span> <em id="size-val">4.2</em></span>
+          <input id="size" type="range" min="2.4" max="16" step="0.1" value="4.2" />
+        </label>
+        <label class="slider">
+          <span><span class="bi">对比 <i class="en" lang="en">Contrast</i></span> <em id="contrast-val">1.05</em></span>
+          <input id="contrast" type="range" min="0.7" max="2.4" step="0.01" value="1.05" />
+        </label>
+        <label class="slider">
+          <span><span class="bi">中间调 <i class="en" lang="en">Midtones</i></span> <em id="gamma-val">1.35</em></span>
+          <input id="gamma" type="range" min="0.6" max="2.1" step="0.01" value="1.35" />
+        </label>
+        <label class="slider" id="white-field">
+          <span><span class="bi">留白 <i class="en" lang="en">Highlights</i></span> <em id="white-val">90%</em></span>
+          <input id="white" type="range" min="0.72" max="1" step="0.01" value="0.9" />
+        </label>
+        <label class="slider">
+          <span><span class="bi">墨量 <i class="en" lang="en">Ink</i></span> <em id="ink-val">1.50</em></span>
+          <input id="ink" type="range" min="0.85" max="1.7" step="0.01" value="1.5" />
+        </label>
+
+        <p class="group-label"><span class="bi">角度 <i class="en" lang="en">Angle</i></span></p>
+        <div class="presets" id="angles">
+          <button type="button" data-angle="0" class="is-on" aria-pressed="true">0°</button>
+          <button type="button" data-angle="15" aria-pressed="false">15°</button>
+          <button type="button" data-angle="45" aria-pressed="false">45°</button>
+        </div>
+
+        <p class="group-label"><span class="bi">纸色 <i class="en" lang="en">Paper</i></span></p>
+        <div class="chips" id="papers">
+          <button type="button" class="chip is-on" data-paper="#e5e2f4" aria-label="淡紫 Lilac" title="淡紫 Lilac" aria-pressed="true" style="background:#e5e2f4"></button>
+          <button type="button" class="chip" data-paper="#f3efe4" aria-label="米白 Cream" title="米白 Cream" aria-pressed="false" style="background:#f3efe4"></button>
+          <button type="button" class="chip" data-paper="#f7f7f5" aria-label="纯白 White" title="纯白 White" aria-pressed="false" style="background:#f7f7f5"></button>
+          <button type="button" class="chip" data-paper="#e6e6ea" aria-label="雾灰 Mist" title="雾灰 Mist" aria-pressed="false" style="background:#e6e6ea"></button>
+          <button type="button" class="chip" data-paper="#f6e6ea" aria-label="浅粉 Blush" title="浅粉 Blush" aria-pressed="false" style="background:#f6e6ea"></button>
+          <button type="button" class="chip" data-paper="#d9eef6" aria-label="浅蓝 Sky" title="浅蓝 Sky" aria-pressed="false" style="background:#d9eef6"></button>
+          <button type="button" class="chip" data-paper="#dff3ea" aria-label="薄荷 Mint" title="薄荷 Mint" aria-pressed="false" style="background:#dff3ea"></button>
+          <button type="button" class="chip" data-paper="#e7f2df" aria-label="浅绿 Sage" title="浅绿 Sage" aria-pressed="false" style="background:#e7f2df"></button>
+          <button type="button" class="chip" data-paper="#f7f3d4" aria-label="淡黄 Butter" title="淡黄 Butter" aria-pressed="false" style="background:#f7f3d4"></button>
+          <button type="button" class="chip" data-paper="#f6e8d6" aria-label="杏色 Apricot" title="杏色 Apricot" aria-pressed="false" style="background:#f6e8d6"></button>
+          <button type="button" class="chip" data-paper="#f0e4ee" aria-label="藕荷 Mauve" title="藕荷 Mauve" aria-pressed="false" style="background:#f0e4ee"></button>
+          <label class="chip picker" title="自选纸色 Custom paper">
+            <input id="paper-picker" type="color" value="#e5e2f4" aria-label="自选纸色 Custom paper" />
+          </label>
+        </div>
+
+        <p class="group-label"><span class="bi">墨色 <i class="en" lang="en">Ink</i></span></p>
+        <div class="chips" id="inks">
+          <button type="button" class="chip is-on" data-ink="#141414" aria-label="墨黑 Black" title="墨黑 Black" aria-pressed="true" style="background:#141414"></button>
+          <button type="button" class="chip" data-ink="#1b2433" aria-label="靛蓝 Indigo" title="靛蓝 Indigo" aria-pressed="false" style="background:#1b2433"></button>
+          <button type="button" class="chip" data-ink="#2c241c" aria-label="褐墨 Sepia" title="褐墨 Sepia" aria-pressed="false" style="background:#2c241c"></button>
+          <label class="chip picker" title="自选墨色 Custom ink">
+            <input id="ink-picker" type="color" value="#141414" aria-label="自选墨色 Custom ink" />
+          </label>
+        </div>
+
+        <label class="check"><input id="knockout" type="checkbox" checked /> <span class="bi">白底融进纸面 <i class="en" lang="en">White to paper</i></span></label>
+        <label class="check"><input id="transparent" type="checkbox" /> <span class="bi">空白处透明 <i class="en" lang="en">Transparent gaps</i></span></label>
+        <p class="hint">
+          白底照片会融进纸色。拍人像或风景时，把「白底融进纸面」关掉。
+          <i class="en" lang="en">White backgrounds blend into the paper. For portraits or landscapes, turn off “White to paper”.</i>
+        </p>
+
+        <button type="button" class="download" id="download" disabled><span class="bi">下载 PNG <i class="en" lang="en">Download</i></span></button>
+        <p class="note">
+          照片只在这台浏览器里处理，不会上传。
+          <i class="en" lang="en">Your photo stays in this browser and is never uploaded.</i>
+        </p>
+      </aside>
+    </div>
+
+    <div class="overlay" id="overlay" hidden>
+      <p>松开，开始制版 <i class="en" lang="en">Drop to print</i></p>
+    </div>
+    <noscript>
+      <p class="noscript">
+        需要开启 JavaScript。网点会在浏览器里直接生成。
+        <i class="en" lang="en">JavaScript is required. Halftones are made in your browser.</i>
+      </p>
+    </noscript>
+    <script src="./js/app.js?v=9"></script>
+  </body>
+</html>
