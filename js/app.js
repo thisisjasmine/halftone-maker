@@ -40,10 +40,21 @@ const labels = {
 };
 
 let sourceBitmap = null;
+let uploadedBitmap = null;
+let usingCutout = false;
+let selecting = false;
+let selectPoints = [];
+let selectClosed = false;
+let selectDrawing = false;
 let previewCanvas = null;
 let sourceName = "";
 let renderToken = 0;
 let dragDepth = 0;
+
+const cutoutBtn = document.getElementById("cutout");
+const lasso = document.getElementById("lasso");
+const selectBar = document.getElementById("select-bar");
+const selectDone = document.getElementById("select-done");
 
 function readSettings() {
   return {
@@ -286,7 +297,7 @@ function renderPreview() {
     if (token !== renderToken) return;
     paintHalftone(view, previewCanvas, settings);
     fitView();
-    statusEl.textContent = `${sourceName} · ${view.width} × ${view.height}`;
+    if (!selecting) statusEl.textContent = `${sourceName} · ${view.width} × ${view.height}`;
   });
 }
 
@@ -301,14 +312,140 @@ async function setBitmap(bitmap, name) {
   renderPreview();
 }
 
+function syncCutoutButton() {
+  cutoutBtn.disabled = !uploadedBitmap || selecting;
+  cutoutBtn.classList.toggle("is-on", usingCutout || selecting);
+  cutoutBtn.setAttribute("aria-pressed", usingCutout || selecting ? "true" : "false");
+  document.getElementById("cutout-zh").textContent = usingCutout && !selecting ? "恢复原图" : "抠图";
+  document.getElementById("cutout-en").textContent = usingCutout && !selecting ? "Restore" : "Cut out";
+}
+
+function showSelectView(show) {
+  selecting = show;
+  selectBar.hidden = !show;
+  lasso.hidden = !show;
+  original.hidden = !show;
+  view.style.visibility = show ? "hidden" : "visible";
+  frame.classList.toggle("is-selecting", show);
+  if (!show) {
+    selectPoints = [];
+    selectClosed = false;
+    selectDrawing = false;
+    selectDone.disabled = true;
+  }
+}
+
+function paintLasso() {
+  const ctx = lasso.getContext("2d");
+  const width = lasso.width;
+  const height = lasso.height;
+  ctx.clearRect(0, 0, width, height);
+  if (selectPoints.length < 2) return;
+  const trace = () => {
+    ctx.beginPath();
+    ctx.moveTo(selectPoints[0].x, selectPoints[0].y);
+    for (let i = 1; i < selectPoints.length; i += 1) ctx.lineTo(selectPoints[i].x, selectPoints[i].y);
+    if (selectClosed) ctx.closePath();
+  };
+  if (selectClosed) {
+    ctx.save();
+    ctx.fillStyle = "rgba(20, 20, 20, 0.45)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = "destination-out";
+    trace();
+    ctx.fill();
+    ctx.restore();
+  }
+  trace();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#fffdf8";
+  ctx.lineWidth = Math.max(3, width / 180);
+  ctx.stroke();
+  ctx.strokeStyle = "#141414";
+  ctx.lineWidth = Math.max(1.5, width / 360);
+  ctx.stroke();
+}
+
+function pointFromEvent(event) {
+  const rect = lasso.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * lasso.width;
+  const y = ((event.clientY - rect.top) / rect.height) * lasso.height;
+  return {
+    x: Math.min(lasso.width, Math.max(0, x)),
+    y: Math.min(lasso.height, Math.max(0, y)),
+  };
+}
+
+function beginSelect() {
+  if (!uploadedBitmap || selecting) return;
+  if (usingCutout) {
+    usingCutout = false;
+    syncCutoutButton();
+    setBitmap(uploadedBitmap, sourceName);
+    return;
+  }
+  const preview = raster(uploadedBitmap, PREVIEW_EDGE);
+  lasso.width = preview.width;
+  lasso.height = preview.height;
+  original.src = preview.toDataURL("image/jpeg", 0.9);
+  showSelectView(true);
+  paintLasso();
+  syncCutoutButton();
+  statusEl.textContent = "按住拖动，圈出要保留的区域 · Drag around the area to keep";
+}
+
+function exitSelect() {
+  showSelectView(false);
+  if (previewCanvas) original.src = previewCanvas.toDataURL("image/jpeg", 0.86);
+  original.hidden = true;
+  syncCutoutButton();
+  if (sourceName) statusEl.textContent = `${sourceName} · ${view.width} × ${view.height}`;
+}
+
+function clearSelection() {
+  selectPoints = [];
+  selectClosed = false;
+  selectDone.disabled = true;
+  paintLasso();
+  statusEl.textContent = "按住拖动，圈出要保留的区域 · Drag around the area to keep";
+}
+
+async function applySelection() {
+  if (!selectClosed || selectPoints.length < 8 || !uploadedBitmap) return;
+  const src = uploadedBitmap;
+  const canvas = document.createElement("canvas");
+  canvas.width = src.width;
+  canvas.height = src.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = "destination-in";
+  const sx = src.width / lasso.width;
+  const sy = src.height / lasso.height;
+  ctx.beginPath();
+  ctx.moveTo(selectPoints[0].x * sx, selectPoints[0].y * sy);
+  for (let i = 1; i < selectPoints.length; i += 1) ctx.lineTo(selectPoints[i].x * sx, selectPoints[i].y * sy);
+  ctx.closePath();
+  ctx.fill();
+  const bitmap = await createImageBitmap(canvas);
+  usingCutout = true;
+  exitSelect();
+  await setBitmap(bitmap, sourceName);
+  syncCutoutButton();
+}
+
 async function loadFile(file) {
   if (!isImageFile(file)) {
     statusEl.textContent = "请上传 JPG、PNG 或 WebP · Use a JPG, PNG, or WebP";
     return;
   }
   statusEl.textContent = "正在读图… Reading…";
+  if (selecting) exitSelect();
   try {
     const bitmap = await decodeFile(file);
+    uploadedBitmap = bitmap;
+    usingCutout = false;
+    syncCutoutButton();
     await setBitmap(bitmap, file.name.replace(/\.[^.]+$/, "") || "照片 Photo");
   } catch {
     statusEl.textContent = "这张图读不了，换一张 JPG 或 PNG · Couldn’t read this image. Try a JPG or PNG";
@@ -316,7 +453,7 @@ async function loadFile(file) {
 }
 
 function showOriginal(show) {
-  if (!original.src) return;
+  if (!original.src || selecting) return;
   original.hidden = !show;
   view.style.visibility = show ? "hidden" : "visible";
 }
@@ -353,6 +490,48 @@ async function download() {
 
 
 document.getElementById("pick").addEventListener("click", () => fileInput.click());
+cutoutBtn.addEventListener("click", beginSelect);
+selectDone.addEventListener("click", applySelection);
+document.getElementById("select-clear").addEventListener("click", clearSelection);
+document.getElementById("select-cancel").addEventListener("click", exitSelect);
+
+lasso.addEventListener("pointerdown", (event) => {
+  if (!selecting) return;
+  try {
+    lasso.setPointerCapture(event.pointerId);
+  } catch {
+    /* Pointer capture is unavailable for some synthetic events. */
+  }
+  selectDrawing = true;
+  selectClosed = false;
+  selectDone.disabled = true;
+  selectPoints = [pointFromEvent(event)];
+  paintLasso();
+});
+lasso.addEventListener("pointermove", (event) => {
+  if (!selectDrawing) return;
+  const point = pointFromEvent(event);
+  const last = selectPoints[selectPoints.length - 1];
+  const dx = point.x - last.x;
+  const dy = point.y - last.y;
+  if (dx * dx + dy * dy < 16) return;
+  selectPoints.push(point);
+  paintLasso();
+});
+function finishStroke() {
+  if (!selectDrawing) return;
+  selectDrawing = false;
+  if (selectPoints.length < 8) {
+    clearSelection();
+    return;
+  }
+  selectClosed = true;
+  selectDone.disabled = false;
+  paintLasso();
+  statusEl.textContent = "圈好后点完成 · Tap Done to keep this area";
+}
+lasso.addEventListener("pointerup", finishStroke);
+lasso.addEventListener("pointercancel", finishStroke);
 document.getElementById("empty").addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", () => {
   const file = fileInput.files && fileInput.files[0];

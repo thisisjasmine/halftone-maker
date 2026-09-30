@@ -175,7 +175,8 @@ h1 .en {
   background-position: 0 0, 0 9px, 9px -9px, -9px 0;
 }
 
-.stage-bar {
+.stage-bar,
+.select-bar {
   display: flex;
   flex: none;
   flex-wrap: wrap;
@@ -184,12 +185,34 @@ h1 .en {
   margin-bottom: 12px;
 }
 
+.select-hint {
+  width: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#lasso {
+  touch-action: none;
+  cursor: crosshair;
+}
+
 .text-btn {
   border: 0;
   background: transparent;
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.text-btn:disabled {
+  color: rgba(20, 20, 20, 0.35);
+  cursor: default;
+  text-decoration: none;
+}
+
+.text-btn.is-on {
+  font-weight: 600;
 }
 
 .status {

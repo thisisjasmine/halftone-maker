@@ -10,7 +10,7 @@
     />
     <title>网点素材生成器 · Halftone Maker</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./css/app.css?v=16" />
+    <link rel="stylesheet" href="./css/app.css?v=18" />
   </head>
   <body>
     <div class="app">
@@ -21,14 +21,22 @@
       <section class="stage" id="stage">
         <div class="stage-bar">
           <button type="button" class="text-btn" id="pick"><span class="bi">上传照片 <i class="en" lang="en">Upload</i></span></button>
+          <button type="button" class="text-btn" id="cutout" disabled><span class="bi"><span id="cutout-zh">抠图</span> <i class="en" lang="en" id="cutout-en">Cut out</i></span></button>
           <button type="button" class="text-btn" id="compare"><span class="bi">按住对比原图 <i class="en" lang="en">Hold to compare</i></span></button>
           <p class="status" id="status" role="status"></p>
+        </div>
+        <div class="select-bar" id="select-bar" hidden>
+          <p class="select-hint"><span class="bi">按住拖动，圈出要保留的区域 <i class="en" lang="en">Drag around the area to keep</i></span></p>
+          <button type="button" class="text-btn" id="select-done" disabled><span class="bi">完成 <i class="en" lang="en">Done</i></span></button>
+          <button type="button" class="text-btn" id="select-clear"><span class="bi">重画 <i class="en" lang="en">Redraw</i></span></button>
+          <button type="button" class="text-btn" id="select-cancel"><span class="bi">取消 <i class="en" lang="en">Cancel</i></span></button>
         </div>
         <div class="canvas-slot">
           <button type="button" class="empty" id="empty" lang="en">Upload an image first</button>
           <div class="frame" id="frame" hidden>
             <canvas id="view" role="img" aria-label="网点预览 Halftone preview"></canvas>
             <img id="original" alt="原图 Original" hidden />
+            <canvas id="lasso" hidden aria-label="圈选区域 Selection"></canvas>
           </div>
         </div>
         <input id="file" type="file" accept="image/*" hidden />
@@ -122,6 +130,6 @@
         <i class="en" lang="en">JavaScript is required. Halftones are made in your browser.</i>
       </p>
     </noscript>
-    <script src="./js/app.js?v=9"></script>
+    <script src="./js/app.js?v=11"></script>
   </body>
 </html>
